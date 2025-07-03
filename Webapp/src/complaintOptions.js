@@ -39,23 +39,16 @@ export function getSubProductOptions(data, product) {
   ).map(sp => ({ value: sp, label: sp }));
 }
 
-export function getIssueGroupOptions(data, product, subProduct) {
+export function getIssueOptions(data, product, subProduct) {
   return getUnique(
     data.filter(row => row.Product === product && row['Sub-product'] === subProduct),
-    'Issue_Group'
-  ).map(ig => ({ value: ig, label: ig }));
-}
-
-export function getIssueOptions(data, product, subProduct, issueGroup) {
-  return getUnique(
-    data.filter(row => row.Product === product && row['Sub-product'] === subProduct && row['Issue_Group'] === issueGroup),
     'Issue'
   ).map(i => ({ value: i, label: i }));
 }
 
-export function getSubIssueOptions(data, product, subProduct, issueGroup, issue) {
+export function getSubIssueOptions(data, product, subProduct, issue) {
   return getUnique(
-    data.filter(row => row.Product === product && row['Sub-product'] === subProduct && row['Issue_Group'] === issueGroup && row['Issue'] === issue),
+    data.filter(row => row.Product === product && row['Sub-product'] === subProduct && row['Issue'] === issue),
     'Sub-issue'
   ).map(si => ({ value: si, label: si }));
 }

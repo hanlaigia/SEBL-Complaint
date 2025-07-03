@@ -5,7 +5,6 @@ import {
   getComplaintOptions,
   getProductOptions,
   getSubProductOptions,
-  getIssueGroupOptions,
   getIssueOptions,
   getSubIssueOptions,
 } from './complaintOptions';
@@ -13,7 +12,6 @@ import {
 function App() {
   const [product, setProduct] = useState('');
   const [subProduct, setSubProduct] = useState('');
-  const [issueGroup, setIssueGroup] = useState('');
   const [issue, setIssue] = useState('');
   const [subIssue, setSubIssue] = useState('');
   const [complaint, setComplaint] = useState('');
@@ -39,7 +37,7 @@ function App() {
       const res = await fetch(import.meta.env.VITE_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product, subProduct, issueGroup, issue, subIssue, complaint }),
+        body: JSON.stringify({ product, subProduct, issue, subIssue, complaint }),
       });
       const text = await res.text();
       const data = (() => {
@@ -60,9 +58,8 @@ function App() {
 
   const productOptions = getProductOptions(complaintData);
   const subProducts = product ? getSubProductOptions(complaintData, product) : [];
-  const issueGroups = product && subProduct ? getIssueGroupOptions(complaintData, product, subProduct) : [];
-  const issues = product && subProduct && issueGroup ? getIssueOptions(complaintData, product, subProduct, issueGroup) : [];
-  const subIssues = product && subProduct && issueGroup && issue ? getSubIssueOptions(complaintData, product, subProduct, issueGroup, issue) : [];
+  const issues = product && subProduct ? getIssueOptions(complaintData, product, subProduct) : [];
+  const subIssues = product && subProduct && issue ? getSubIssueOptions(complaintData, product, subProduct, issue) : [];
 
   return (
     <ThemeProvider theme={theme}>
@@ -102,7 +99,6 @@ function App() {
                   onChange={e => {
                     setProduct(e.target.value);
                     setSubProduct('');
-                    setIssueGroup('');
                     setIssue('');
                     setSubIssue('');
                   }}
@@ -119,7 +115,6 @@ function App() {
                   value={subProduct}
                   onChange={e => {
                     setSubProduct(e.target.value);
-                    setIssueGroup('');
                     setIssue('');
                     setSubIssue('');
                   }}
@@ -133,23 +128,6 @@ function App() {
                 </TextField>
                 <TextField
                   select
-                  label="Issue Group"
-                  value={issueGroup}
-                  onChange={e => {
-                    setIssueGroup(e.target.value);
-                    setIssue('');
-                    setSubIssue('');
-                  }}
-                  required
-                  disabled={!subProduct}
-                >
-                  <MenuItem value="" disabled>Select Issue Group</MenuItem>
-                  {issueGroups.map(opt => (
-                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
                   label="Issue"
                   value={issue}
                   onChange={e => {
@@ -157,7 +135,7 @@ function App() {
                     setSubIssue('');
                   }}
                   required
-                  disabled={!issueGroup}
+                  disabled={!subProduct}
                 >
                   <MenuItem value="" disabled>Select Issue</MenuItem>
                   {issues.map(opt => (
