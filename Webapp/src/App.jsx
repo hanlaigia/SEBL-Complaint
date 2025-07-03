@@ -29,12 +29,14 @@ function App() {
     });
   }, []);
 
+  // API URL and environment variables logging removed
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setResponse('');
     try {
-      const res = await fetch('https://nguyenn.app.n8n.cloud/webhook/dc7c8e84-bf6c-4ad9-a533-61e13ba8c04f', {
+      const res = await fetch(import.meta.env.VITE_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ product, subProduct, issueGroup, issue, subIssue, complaint }),
@@ -42,10 +44,11 @@ function App() {
       const text = await res.text();
       const data = (() => {
         try {
-          const arr = JSON.parse(text);
-          return Array.isArray(arr) && arr[0]?.output ? arr[0].output : text;
+          const obj = JSON.parse(text);
+          // Console log for parsed response removed
+          return obj?.output || 'Invalid response format';
         } catch {
-          return text;
+          return 'Failed to parse response';
         }
       })();
       setResponse(data);

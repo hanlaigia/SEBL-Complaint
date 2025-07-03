@@ -8,6 +8,20 @@ This is a React website for submitting complaints, built with Vite and Material 
 
 ## How to Run
 
+### Using Docker
+
+1. Build and start the Docker container:
+   ```sh
+   docker-compose up --build
+   ```
+
+2. Access the application in your browser at:
+   ```
+   http://localhost:4444
+   ```
+
+### Local Development
+
 1. Install dependencies:
    ```sh
    npm install
