@@ -1,5 +1,5 @@
 services:
-  webapp:
+  webapp-frontend:
     build:
       context: ./Webapp
       dockerfile: Dockerfile
@@ -17,3 +17,19 @@ services:
     working_dir: /usr/src/app
     stdin_open: true
     tty: true
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./Webapp
+      dockerfile: backend.Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./Webapp/.env
+    volumes:
+      - ./Webapp:/app
+    command: ["uvicorn", "backend:app", "--host", "0.0.0.0", "--port", "3001"]
+    working_dir: /app
+    restart: unless-stopped

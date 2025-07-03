@@ -22,6 +22,8 @@ This is a React website for submitting complaints, built with Vite and Material 
 
 ### Local Development
 
+#### Frontend
+
 1. Install dependencies:
    ```sh
    npm install
@@ -29,6 +31,26 @@ This is a React website for submitting complaints, built with Vite and Material 
 2. Start the development server:
    ```sh
    npm run dev
+   ```
+
+#### Backend
+
+1. Navigate to the backend directory:
+   ```sh
+   cd Webapp
+   ```
+2. (Optional) Create a virtual environment and activate it:
+   ```sh
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+3. Install backend dependencies:
+   ```sh
+   pip install -r requirements.txt
+   ```
+4. Start the backend server:
+   ```sh
+   python backend.py
    ```
 
 ## Customizing Dropdown Options
