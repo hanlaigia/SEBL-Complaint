@@ -30,7 +30,7 @@ from pydantic import BaseModel
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-from prompts import get_system_prompt, get_generation_prompt, SYSTEM_ACKNOWLEDGMENT
+from prompts import get_system_prompt, get_generation_prompt, get_regeneration_prompt, SYSTEM_ACKNOWLEDGMENT
 
 # Load environment variables from root .env
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -89,6 +89,9 @@ class MessageResponse(BaseModel):
     is_ready_to_generate: bool
     dataset_available: bool
 
+class RegenerateRequest(BaseModel):
+    feedback: str
+
 class Session:
     """Manages conversation state and data collection for a single user session"""
     
@@ -105,6 +108,9 @@ class Session:
             "specific_terminology": None
         }
         self.generated_dataset = None
+        self.dataset_iterations = []  # Track all dataset versions
+        self.feedback_history = []  # Track all feedback provided
+        self.current_iteration = 0  # Counter for regenerations
         self.model = genai.GenerativeModel("gemini-2.5-flash")
     
     def get_checklist(self) -> dict:
@@ -209,6 +215,51 @@ class Session:
             csv_content = csv_content.split("```")[1].split("```")[0].strip()
         
         self.generated_dataset = csv_content
+        self.dataset_iterations.append({
+            "iteration": self.current_iteration,
+            "dataset": csv_content,
+            "feedback": None,
+            "timestamp": datetime.now().isoformat()
+        })
+        return csv_content
+
+    async def regenerate_dataset(self, feedback: str) -> str:
+        """Regenerate the dataset based on user feedback"""
+        if not self.is_data_complete():
+            return None
+        
+        # Store the previous dataset before regenerating
+        previous_dataset = self.generated_dataset
+        
+        # Store the feedback
+        self.feedback_history.append({
+            "iteration": self.current_iteration,
+            "feedback": feedback,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Increment iteration counter
+        self.current_iteration += 1
+        
+        # Get regeneration prompt with feedback and previous dataset
+        regeneration_prompt = get_regeneration_prompt(self.collected_data, TABLE1, TABLE2, feedback, previous_dataset)
+        
+        response = self.model.generate_content(regeneration_prompt)
+        csv_content = response.text.strip()
+        
+        # Clean up the response if it contains markdown code blocks
+        if "```csv" in csv_content:
+            csv_content = csv_content.split("```csv")[1].split("```")[0].strip()
+        elif "```" in csv_content:
+            csv_content = csv_content.split("```")[1].split("```")[0].strip()
+        
+        self.generated_dataset = csv_content
+        self.dataset_iterations.append({
+            "iteration": self.current_iteration,
+            "dataset": csv_content,
+            "feedback": feedback,
+            "timestamp": datetime.now().isoformat()
+        })
         return csv_content
 
 
@@ -276,7 +327,37 @@ async def generate_dataset(session_id: str):
         return {
             "success": True,
             "message": "Dataset generated successfully",
-            "preview": dataset[:500] + "..." if len(dataset) > 500 else dataset
+            "dataset": dataset,
+            "iteration": session.current_iteration
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/regenerate/{session_id}")
+async def regenerate_dataset(session_id: str, request: RegenerateRequest):
+    """
+    Regenerate the complaint dataset based on user feedback.
+    
+    Takes the user's feedback on the previous dataset and generates
+    a new version incorporating the feedback.
+    """
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = sessions[session_id]
+    
+    if not session.generated_dataset:
+        raise HTTPException(status_code=400, detail="No dataset has been generated yet. Generate a dataset first.")
+    
+    try:
+        new_dataset = await session.regenerate_dataset(request.feedback)
+        return {
+            "success": True,
+            "message": "Dataset regenerated based on feedback",
+            "dataset": new_dataset,
+            "iteration": session.current_iteration,
+            "feedback_count": len(session.feedback_history)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

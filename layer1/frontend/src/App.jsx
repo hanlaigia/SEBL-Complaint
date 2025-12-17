@@ -4,6 +4,53 @@ import './App.css'
 
 const API_BASE = '/api'
 
+// DatasetTable component to display CSV data as table
+function DatasetTable({ csvData }) {
+  const lines = csvData.trim().split('\n')
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+  const rows = lines.slice(1).map(line => {
+    // Parse CSV properly handling quoted values
+    const values = []
+    let current = ''
+    let inQuotes = false
+    for (let char of line) {
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim().replace(/^"|"$/g, ''))
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    values.push(current.trim().replace(/^"|"$/g, ''))
+    return values
+  })
+
+  return (
+    <div className="dataset-table-wrapper">
+      <table className="dataset-table">
+        <thead>
+          <tr>
+            {headers.map((header, i) => (
+              <th key={i}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {row.map((cell, j) => (
+                <td key={j}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function App() {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
@@ -13,6 +60,11 @@ function App() {
   const [datasetAvailable, setDatasetAvailable] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [currentDataset, setCurrentDataset] = useState(null)
+  const [feedbackMode, setFeedbackMode] = useState(false)
+  const [feedbackInput, setFeedbackInput] = useState('')
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [iterationCount, setIterationCount] = useState(0)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -34,7 +86,8 @@ I'm here to help you create a customized complaint dataset for your customer sup
 **How it works:**
 1. I'll ask you some questions about your business
 2. Once I have enough information, I'll generate a dataset of realistic complaint examples
-3. You can download the dataset as a CSV file
+3. You can provide feedback and regenerate until you're satisfied
+4. Download the final dataset as a CSV file
 
 Let's get started! **What industry or domain does your business operate in?** (e.g., Finance, E-commerce, Healthcare, Restaurant, etc.)`
     }])
@@ -102,19 +155,30 @@ Let's get started! **What industry or domain does your business operate in?** (e
       }
 
       const data = await response.json()
+      setCurrentDataset(data.dataset)
+      setIterationCount(0)
       setDatasetAvailable(true)
+      setFeedbackMode(true)
       
+      // Add message with dataset table
       setMessages(prev => [...prev, { 
-        type: 'bot', 
-        content: `✅ **Dataset Generated Successfully!**
+        type: 'dataset',
+        content: data.dataset,
+        iteration: data.iteration
+      }])
+      
+      // Ask for feedback
+      setMessages(prev => [...prev, { 
+        type: 'bot',
+        content: `✅ **Dataset Generated!** (Iteration ${data.iteration})
 
-Your complaint dataset is ready for download. Here's a preview:
+I've generated a complaint dataset with 20 realistic examples for your industry. Review the table above to see the complaints.
 
-\`\`\`
-${data.preview}
-\`\`\`
+**What do you think?** You have two options:
+1. **Provide feedback** - Tell me what you'd like to change or improve, and I'll regenerate the dataset
+2. **Satisfied** - Download the current dataset
 
-Click the **Download Dataset** button below to get your CSV file.`
+What would you like to do?`
       }])
     } catch (error) {
       console.error('Error:', error)
@@ -127,6 +191,81 @@ Click the **Download Dataset** button below to get your CSV file.`
     }
   }
 
+  const submitFeedback = async () => {
+    if (!feedbackInput.trim() || isRegenerating || !sessionId) return
+
+    const feedback = feedbackInput.trim()
+    setFeedbackInput('')
+    setIsRegenerating(true)
+
+    // Add user feedback to chat
+    setMessages(prev => [...prev, { 
+      type: 'user', 
+      content: `Feedback: ${feedback}` 
+    }])
+
+    // Show regenerating message
+    setMessages(prev => [...prev, { 
+      type: 'bot', 
+      content: '🔄 Regenerating dataset with your feedback... This may take a moment.' 
+    }])
+
+    try {
+      const response = await fetch(`${API_BASE}/regenerate/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Failed to regenerate dataset')
+      }
+
+      const data = await response.json()
+      setCurrentDataset(data.dataset)
+      setIterationCount(data.iteration)
+
+      // Add new dataset table
+      setMessages(prev => [...prev, { 
+        type: 'dataset',
+        content: data.dataset,
+        iteration: data.iteration
+      }])
+
+      // Ask for feedback again
+      setMessages(prev => [...prev, { 
+        type: 'bot',
+        content: `✅ **Dataset Regenerated!** (Iteration ${data.iteration})
+
+I've updated the dataset based on your feedback. Review the new table above.
+
+**How does this look?** Would you like to:
+1. **Provide more feedback** - Continue refining the dataset
+2. **Satisfied** - Download this version`
+      }])
+    } catch (error) {
+      console.error('Error:', error)
+      setMessages(prev => [...prev, { 
+        type: 'error', 
+        content: `Failed to regenerate dataset: ${error.message}` 
+      }])
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
+
+  const markSatisfied = () => {
+    setFeedbackMode(false)
+    setFeedbackInput('')
+    setMessages(prev => [...prev, { 
+      type: 'bot', 
+      content: `🎉 **Great!** Your complaint dataset is ready for download.
+
+Click the **Download Dataset** button to save your dataset as a CSV file. You can use this for training your complaint categorization models or customer support systems.` 
+    }])
+  }
+
   const downloadDataset = () => {
     if (!sessionId) return
     window.open(`${API_BASE}/download/${sessionId}`, '_blank')
@@ -135,7 +274,11 @@ Click the **Download Dataset** button below to get your CSV file.`
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      if (feedbackMode) {
+        submitFeedback()
+      } else {
+        sendMessage()
+      }
     }
   }
 
@@ -189,7 +332,7 @@ Click the **Download Dataset** button below to get your CSV file.`
             </button>
           )}
           
-          {datasetAvailable && (
+          {datasetAvailable && !feedbackMode && (
             <button 
               className="btn btn-success"
               onClick={downloadDataset}
@@ -211,7 +354,11 @@ Click the **Download Dataset** button below to get your CSV file.`
           {messages.map((msg, index) => (
             <div key={index} className={`message ${msg.type}`}>
               <div className="message-content">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                {msg.type === 'dataset' ? (
+                  <DatasetTable csvData={msg.content} />
+                ) : (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                )}
               </div>
             </div>
           ))}
@@ -230,21 +377,54 @@ Click the **Download Dataset** button below to get your CSV file.`
         </div>
 
         <div className="input-container">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            rows={1}
-            disabled={isLoading}
-          />
-          <button 
-            className="send-btn"
-            onClick={sendMessage}
-            disabled={!inputValue.trim() || isLoading}
-          >
-            ➤
-          </button>
+          {feedbackMode ? (
+            <>
+              <textarea
+                value={feedbackInput}
+                onChange={(e) => setFeedbackInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Describe what you'd like to change or improve in the dataset..."
+                rows={2}
+                disabled={isRegenerating}
+              />
+              <div className="feedback-actions">
+                <button 
+                  className="send-btn"
+                  onClick={submitFeedback}
+                  disabled={!feedbackInput.trim() || isRegenerating}
+                  title="Regenerate with feedback"
+                >
+                  🔄
+                </button>
+                <button 
+                  className="send-btn btn-success"
+                  onClick={markSatisfied}
+                  disabled={isRegenerating}
+                  title="Satisfied with current dataset"
+                >
+                  ✓
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                rows={1}
+                disabled={isLoading}
+              />
+              <button 
+                className="send-btn"
+                onClick={sendMessage}
+                disabled={!inputValue.trim() || isLoading}
+              >
+                ➤
+              </button>
+            </>
+          )}
         </div>
       </main>
     </div>
