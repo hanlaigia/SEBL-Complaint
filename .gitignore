@@ -33,3 +33,5 @@ Thumbs.db
 # Layer1 specific
 layer1/frontend/node_modules/
 layer1/.venv/
+
+app/backend/data/raw_data/
