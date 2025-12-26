@@ -1,12 +1,12 @@
 """
-Complaint Dataset Generator Agent Backend
+Layer 1 - Risk Classification Dataset Generator
 
-This FastAPI backend powers an AI agent that helps generate domain-specific 
-complaint datasets for customer support systems. It uses Google Gemini 2.5 Flash
-to interactively gather business details and generate tailored complaint examples.
+This module powers an AI agent that helps generate domain-specific 
+risk classification datasets. It uses Google Gemini 2.5 Flash
+to interactively gather business details and generate tailored risk examples.
 
 Architecture:
-- FastAPI server with CORS enabled for React frontend
+- APIRouter for modular FastAPI integration
 - Session-based conversation management (in-memory, resets on server restart)
 - Google Gemini API integration for intelligent conversation and generation
 - CSV generation and download capabilities
@@ -23,39 +23,26 @@ from typing import Optional
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-from prompts import get_system_prompt, get_generation_prompt, get_regeneration_prompt, SYSTEM_ACKNOWLEDGMENT
+from .prompts import get_system_prompt, get_generation_prompt, get_regeneration_prompt, SYSTEM_ACKNOWLEDGMENT
 
 # Load environment variables from root .env
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 load_dotenv(ROOT_DIR / ".env")
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Data directory for reference tables
+# Data directory for reference tables (shared across layers)
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-app = FastAPI(
-    title="Complaint Dataset Generator Agent",
-    description="AI-powered agent for generating domain-specific complaint datasets",
-    version="1.0.0"
-)
-
-# Enable CORS for React frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Create router for Layer 1
+router = APIRouter()
 
 # In-memory session storage (resets on server restart)
 sessions = {}
@@ -73,8 +60,15 @@ def load_table2():
         reader = csv.DictReader(f)
         return list(reader)
 
+def load_table8():
+    """Load the impact scale taxonomy"""
+    with open(DATA_DIR / "table8_impact_scale.csv", "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
 TABLE1 = load_table1()
 TABLE2 = load_table2()
+TABLE8 = load_table8()
 
 
 # Pydantic models
@@ -161,7 +155,7 @@ class Session:
         })
         
         # Build the chat with system prompt and history
-        system_prompt = get_system_prompt(TABLE1, TABLE2, self.get_checklist())
+        system_prompt = get_system_prompt(TABLE1, TABLE2, TABLE8, self.get_checklist())
         chat = self.model.start_chat(history=[
             {"role": "user", "parts": [system_prompt]},
             {"role": "model", "parts": [SYSTEM_ACKNOWLEDGMENT]},
@@ -199,11 +193,11 @@ class Session:
         return response_text
 
     async def generate_dataset(self) -> str:
-        """Generate the complaint dataset based on collected information"""
+        """Generate the risk classification dataset based on collected information"""
         if not self.is_data_complete():
             return None
         
-        generation_prompt = get_generation_prompt(self.collected_data, TABLE1, TABLE2)
+        generation_prompt = get_generation_prompt(self.collected_data, TABLE1, TABLE2, TABLE8)
 
         response = self.model.generate_content(generation_prompt)
         csv_content = response.text.strip()
@@ -242,7 +236,7 @@ class Session:
         self.current_iteration += 1
         
         # Get regeneration prompt with feedback and previous dataset
-        regeneration_prompt = get_regeneration_prompt(self.collected_data, TABLE1, TABLE2, feedback, previous_dataset)
+        regeneration_prompt = get_regeneration_prompt(self.collected_data, TABLE1, TABLE2, TABLE8, feedback, previous_dataset)
         
         response = self.model.generate_content(regeneration_prompt)
         csv_content = response.text.strip()
@@ -273,13 +267,13 @@ def get_or_create_session(session_id: Optional[str]) -> Session:
     return sessions[new_id]
 
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "Complaint Dataset Generator Agent"}
+@router.get("/")
+async def layer1_root():
+    """Layer 1 health check endpoint"""
+    return {"status": "healthy", "layer": 1, "service": "Risk Classification Dataset Generator"}
 
 
-@app.post("/chat", response_model=MessageResponse)
+@router.post("/chat", response_model=MessageResponse)
 async def chat(request: MessageRequest):
     """
     Main chat endpoint for conversation with the agent.
@@ -304,7 +298,7 @@ async def chat(request: MessageRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/generate/{session_id}")
+@router.post("/generate/{session_id}")
 async def generate_dataset(session_id: str):
     """
     Generate the complaint dataset for a session.
@@ -334,7 +328,7 @@ async def generate_dataset(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/regenerate/{session_id}")
+@router.post("/regenerate/{session_id}")
 async def regenerate_dataset(session_id: str, request: RegenerateRequest):
     """
     Regenerate the complaint dataset based on user feedback.
@@ -363,7 +357,7 @@ async def regenerate_dataset(session_id: str, request: RegenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/download/{session_id}")
+@router.get("/download/{session_id}")
 async def download_dataset(session_id: str):
     """
     Download the generated dataset as a CSV file.
@@ -391,7 +385,7 @@ async def download_dataset(session_id: str):
     )
 
 
-@app.get("/session/{session_id}")
+@router.get("/session/{session_id}")
 async def get_session_status(session_id: str):
     """
     Get the current status of a session including checklist and dataset availability.
@@ -411,7 +405,7 @@ async def get_session_status(session_id: str):
     }
 
 
-@app.delete("/session/{session_id}")
+@router.delete("/session/{session_id}")
 async def delete_session(session_id: str):
     """
     Delete a session and all associated data.
@@ -421,8 +415,3 @@ async def delete_session(session_id: str):
     
     del sessions[session_id]
     return {"success": True, "message": "Session deleted"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)

@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-import './App.css'
 
-const API_BASE = '/api'
+const API_BASE = '/api/layer1'
 
 // DatasetTable component to display CSV data as table
 function DatasetTable({ csvData }) {
@@ -51,7 +50,7 @@ function DatasetTable({ csvData }) {
   )
 }
 
-function App() {
+function Layer1() {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [sessionId, setSessionId] = useState(null)
@@ -79,13 +78,13 @@ function App() {
   useEffect(() => {
     setMessages([{
       type: 'bot',
-      content: `👋 Welcome to the **Complaint Dataset Generator**!
+      content: `👋 Welcome to the **Risk Classification Dataset Generator**!
 
-I'm here to help you create a customized complaint dataset for your customer support system. This dataset will help train AI models to understand and categorize customer complaints specific to your industry.
+I'm here to help you create a customized risk classification dataset for your business. This dataset will help identify and categorize potential risks specific to your industry.
 
 **How it works:**
 1. I'll ask you some questions about your business
-2. Once I have enough information, I'll generate a dataset of realistic complaint examples
+2. Once I have enough information, I'll generate a dataset with risk codes, impact scores, and descriptions
 3. You can provide feedback and regenerate until you're satisfied
 4. Download the final dataset as a CSV file
 
@@ -141,7 +140,7 @@ Let's get started! **What industry or domain does your business operate in?** (e
     setIsGenerating(true)
     setMessages(prev => [...prev, { 
       type: 'bot', 
-      content: '🔄 Generating your complaint dataset... This may take a moment.' 
+      content: '🔄 Generating your risk classification dataset... This may take a moment.' 
     }])
 
     try {
@@ -172,7 +171,7 @@ Let's get started! **What industry or domain does your business operate in?** (e
         type: 'bot',
         content: `✅ **Dataset Generated!** (Iteration ${data.iteration})
 
-I've generated a complaint dataset with 20 realistic examples for your industry. Review the table above to see the complaints.
+I've generated a risk classification dataset with 20 entries for your industry. Review the table above to see the risk codes, impact scores, and descriptions.
 
 **What do you think?** You have two options:
 1. **Provide feedback** - Tell me what you'd like to change or improve, and I'll regenerate the dataset
@@ -260,9 +259,9 @@ I've updated the dataset based on your feedback. Review the new table above.
     setFeedbackInput('')
     setMessages(prev => [...prev, { 
       type: 'bot', 
-      content: `🎉 **Great!** Your complaint dataset is ready for download.
+      content: `🎉 **Great!** Your risk classification dataset is ready for download.
 
-Click the **Download Dataset** button to save your dataset as a CSV file. You can use this for training your complaint categorization models or customer support systems.` 
+Click the **Download Dataset** button to save your dataset as a CSV file. You can use this for risk assessment and management in your organization.` 
     }])
   }
 
@@ -293,7 +292,7 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
   const totalCount = getChecklistItems().length
 
   return (
-    <div className="app-container">
+    <div className="layer-container">
       {/* Sidebar with checklist */}
       <aside className="sidebar">
         <div className="sidebar-header">
@@ -346,8 +345,8 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
       {/* Main chat area */}
       <main className="chat-container">
         <header className="chat-header">
-          <h1>🤖 Complaint Dataset Generator</h1>
-          <p>AI-powered tool for creating domain-specific complaint datasets</p>
+          <h1>🤖 Risk Classification Generator</h1>
+          <p>AI-powered tool for creating domain-specific risk classification datasets</p>
         </header>
 
         <div className="messages-container">
@@ -431,4 +430,4 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
   )
 }
 
-export default App
+export default Layer1

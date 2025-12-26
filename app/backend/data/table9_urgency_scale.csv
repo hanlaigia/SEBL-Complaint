@@ -1,0 +1,6 @@
+Score,Level,Description
+5,Immediate,Requires instant action
+4,Urgent,Requires quick action
+3,Moderate,Requires timely action
+2,Low,Can be scheduled
+1,Minimal,No time pressure

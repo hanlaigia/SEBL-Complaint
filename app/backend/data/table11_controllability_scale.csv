@@ -1,0 +1,6 @@
+Score,Level,Description
+5,Fully Controllable,Organization has complete control
+4,Mostly Controllable,Organization has significant control
+3,Moderately Controllable,Requires some external coordination
+2,Limited Control,Significant external dependencies
+1,Minimal Control,Beyond organizational control

@@ -1,0 +1,6 @@
+Score,Level,Description
+5,Critical,Threatens business continuity or major financial loss
+4,High,Significant business disruption
+3,Medium,Moderate business impact
+2,Low,Minor business inconvenience
+1,Minimal,Negligible business impact

@@ -1,0 +1,6 @@
+Score,Level,Description
+5,Constant,Occurs daily or multiple times per day
+4,Frequent,Occurs multiple times per week
+3,Moderate,Occurs weekly
+2,Occasional,Occurs monthly
+1,Rare,Occurs less than monthly

@@ -208,6 +208,47 @@ Banking terminology we use: ACH transfers, wire fees, APY, FDIC insured, routing
 
 ---
 
+## Test Case 8: Hotel & Hospitality (Quick Test)
+
+### Single Comprehensive Prompt for Fast Generation
+
+**User Prompt (Copy & Paste This):**
+```
+I manage a 4-star boutique hotel chain called "Azure Stays" with 8 properties across major tourist destinations.
+
+Our services include:
+- Luxury rooms and suites with city/ocean views
+- 24/7 concierge and room service
+- On-site restaurants, bars, and spa facilities
+- Conference rooms and event spaces
+- Airport shuttle and valet parking
+- Swimming pools, gyms, and wellness centers
+- Loyalty program with points and tier benefits
+
+Our guests are primarily business travelers (35-55), couples on vacation (28-45), and families during holiday seasons. International tourists make up about 40% of our bookings.
+
+Common complaints we receive:
+- Room not matching photos on booking site
+- AC/heating not working properly
+- Noise from other guests or construction
+- Slow WiFi or connectivity issues
+- Check-in delays especially during peak hours
+- Housekeeping missed or incomplete
+- Restaurant food quality inconsistent
+- Hidden resort fees and charges
+- Loyalty points not credited correctly
+- Pool/spa facilities overcrowded or closed for maintenance
+- Lost or damaged luggage by staff
+- Unresponsive front desk
+- Bed bugs or cleanliness issues
+- Overbooking leading to room downgrades
+- Early check-out charges applied incorrectly
+
+Hotel terminology we use: RevPAR, ADR, OTA (Online Travel Agency), PMS (Property Management System), comp nights, rack rate, late checkout, turn-down service, amenity fee, resort fee, incidentals hold, folio, no-show policy, and blackout dates.
+```
+
+---
+
 ## Expected Outputs
 
 After completing any test case, the generated dataset should:
