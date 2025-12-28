@@ -218,6 +218,98 @@ class ProcessingSession:
             self.status = "error"
             self.error_message = str(e)
             self.end_time = datetime.now()
+    
+    async def reprocess_with_feedback(self, feedback: str):
+        """Reprocess complaints with user feedback guidance"""
+        self.status = "processing"
+        self.start_time = datetime.now()
+        self.results = []
+        
+        # Build feedback context for the prompt
+        feedback_context = f"\nUser Feedback: {feedback}\n"
+        feedback_context += "Please use this feedback to adjust your scoring and classifications when re-analyzing the complaints."
+        
+        try:
+            for i, complaint in enumerate(self.complaints):
+                # Classify with feedback context
+                cache_key = self.get_cache_key(complaint)
+                
+                # Clear cache for this complaint so it gets reclassified
+                if cache_key in classification_cache:
+                    del classification_cache[cache_key]
+                
+                # Generate classification using LLM with feedback
+                prompt = get_classification_prompt(
+                    complaint, 
+                    self.risk_table, 
+                    TABLE8, TABLE9, TABLE10, TABLE11
+                ) + feedback_context
+                
+                try:
+                    response = self.model.generate_content(prompt)
+                    response_text = response.text.strip()
+                    
+                    # Clean up response if wrapped in markdown
+                    if response_text.startswith("```json"):
+                        response_text = response_text[7:]
+                    if response_text.startswith("```"):
+                        response_text = response_text[3:]
+                    if response_text.endswith("```"):
+                        response_text = response_text[:-3]
+                    response_text = response_text.strip()
+                    
+                    result = json.loads(response_text)
+                    
+                    # Validate and ensure all scores are integers 1-5
+                    result["impact_score"] = max(1, min(5, int(result.get("impact_score", 3))))
+                    result["urgency_score"] = max(1, min(5, int(result.get("urgency_score", 3))))
+                    result["frequency_score"] = max(1, min(5, int(result.get("frequency_score", 3))))
+                    result["controllability_score"] = max(1, min(5, int(result.get("controllability_score", 3))))
+                    
+                except (json.JSONDecodeError, KeyError, ValueError) as e:
+                    result = {
+                        "risk_code": "ER-03",
+                        "risk_description": "Unable to classify",
+                        "impact_score": 3,
+                        "urgency_score": 3,
+                        "frequency_score": 3,
+                        "controllability_score": 3
+                    }
+                
+                # Calculate priority
+                priority_score, priority_level = self.calculate_priority(
+                    result["impact_score"],
+                    result["urgency_score"],
+                    result["frequency_score"],
+                    result["controllability_score"]
+                )
+                
+                # Build result row
+                result_row = {
+                    "complaint": complaint,
+                    "risk_code": result["risk_code"],
+                    "risk_description": result["risk_description"],
+                    "impact_score": result["impact_score"],
+                    "urgency_score": result["urgency_score"],
+                    "frequency_score": result["frequency_score"],
+                    "controllability_score": result["controllability_score"],
+                    "priority_score": priority_score,
+                    "priority_level": priority_level
+                }
+                
+                self.results.append(result_row)
+                self.processed_rows = i + 1
+                
+                # Small delay to avoid rate limiting
+                await asyncio.sleep(0.1)
+            
+            self.status = "completed"
+            self.end_time = datetime.now()
+            
+        except Exception as e:
+            self.status = "error"
+            self.error_message = str(e)
+            self.end_time = datetime.now()
 
 
 # Pydantic models
@@ -234,6 +326,10 @@ class ProgressResponse(BaseModel):
     processed_rows: int
     elapsed_seconds: float
     error_message: Optional[str] = None
+
+
+class RegenerateRequest(BaseModel):
+    feedback: str
 
 
 @router.get("/")
@@ -424,6 +520,33 @@ async def delete_session(session_id: str):
     
     del sessions[session_id]
     return {"success": True, "message": "Session deleted"}
+
+
+@router.post("/regenerate/{session_id}")
+async def regenerate_results(session_id: str, request: RegenerateRequest, background_tasks: BackgroundTasks):
+    """
+    Regenerate classification results based on user feedback.
+    Reprocesses all complaints with feedback guidance.
+    """
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = sessions[session_id]
+    
+    if not session.results:
+        raise HTTPException(status_code=400, detail="No results to regenerate")
+    
+    if not request.feedback.strip():
+        raise HTTPException(status_code=400, detail="Please provide feedback")
+    
+    # Start background reprocessing
+    background_tasks.add_task(session.reprocess_with_feedback, request.feedback)
+    
+    return {
+        "message": "Regenerating results with feedback",
+        "session_id": session_id,
+        "feedback": request.feedback
+    }
 
 
 @router.get("/cache/stats")

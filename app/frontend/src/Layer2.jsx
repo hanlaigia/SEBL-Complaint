@@ -20,6 +20,10 @@ function Layer2() {
   // Results state
   const [results, setResults] = useState([])
   const [error, setError] = useState(null)
+  const [feedbackMode, setFeedbackMode] = useState(false)
+  const [feedbackInput, setFeedbackInput] = useState('')
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [regenerationCount, setRegenerationCount] = useState(0)
   
   // Refs for file inputs
   const complaintsInputRef = useRef(null)
@@ -205,6 +209,50 @@ function Layer2() {
     }
   }
   
+  const submitFeedback = async () => {
+    if (!feedbackInput.trim() || isRegenerating || !sessionId) return
+    
+    const feedback = feedbackInput.trim()
+    setFeedbackInput('')
+    setIsRegenerating(true)
+    setError(null)
+    setLocalElapsed(0)
+    
+    try {
+      const response = await fetch(`/api/layer2/regenerate/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback })
+      })
+      
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.detail || 'Failed to regenerate')
+      }
+      
+      // Start progress polling
+      setProgress({
+        status: 'processing',
+        total_rows: progress.total_rows,
+        processed_rows: 0,
+        elapsed_seconds: 0
+      })
+      setRegenerationCount(regenerationCount + 1)
+      
+      // Start local timer
+      timerInterval.current = setInterval(() => {
+        setLocalElapsed(prev => prev + 0.1)
+      }, 100)
+      
+      // Start polling for progress
+      progressInterval.current = setInterval(checkProgress, 500)
+      
+    } catch (err) {
+      setIsRegenerating(false)
+      setError(err.message)
+    }
+  }
+  
   const resetSession = () => {
     setComplaintsFile(null)
     setRiskTableFile(null)
@@ -219,6 +267,10 @@ function Layer2() {
     setLocalElapsed(0)
     setResults([])
     setError(null)
+    setFeedbackMode(false)
+    setFeedbackInput('')
+    setIsRegenerating(false)
+    setRegenerationCount(0)
     
     if (progressInterval.current) {
       clearInterval(progressInterval.current)
@@ -296,7 +348,7 @@ function Layer2() {
                 hidden
               />
               <div className="upload-icon">📊</div>
-              <h3>Risk Table CSV (Layer 1 Output)</h3>
+              <h3>Risk Table CSV</h3>
               {riskTableFile ? (
                 <p className="file-name">{riskTableFile.name}</p>
               ) : (
@@ -370,7 +422,7 @@ function Layer2() {
       {results.length > 0 && (
         <div className="layer2-results-section">
           <div className="results-header">
-            <h3>Classification Results ({results.length} complaints)</h3>
+            <h3>Classification Results ({results.length} complaints) {regenerationCount > 0 && `(Regenerated ${regenerationCount}x)`}</h3>
             <div className="results-actions">
               <button className="download-btn" onClick={handleDownload}>
                 📥 Download CSV
@@ -380,6 +432,77 @@ function Layer2() {
               </button>
             </div>
           </div>
+          
+          {!feedbackMode && !isRegenerating && (
+            <div className="feedback-prompt">
+              <p>Are the results satisfactory? You can provide feedback to improve the classifications.</p>
+              <button 
+                className="feedback-toggle-btn"
+                onClick={() => setFeedbackMode(true)}
+              >
+                ✏️ Provide Feedback
+              </button>
+            </div>
+          )}
+          
+          {(feedbackMode || isRegenerating) && (
+            <div className="feedback-section">
+              {isRegenerating ? (
+                <>
+                  <div className="progress-display">
+                    <div className="progress-bar-container">
+                      <div 
+                        className="progress-bar-fill"
+                        style={{ 
+                          width: `${progress.total_rows ? (progress.processed_rows / progress.total_rows * 100) : 0}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="progress-stats">
+                      <span>
+                        Re-processing: <strong>{progress.processed_rows}</strong> / {progress.total_rows}
+                      </span>
+                      <span>
+                        Elapsed: <strong>{formatTime(localElapsed)}</strong>
+                      </span>
+                    </div>
+                    <div className="processing-spinner">🔄 Regenerating with feedback...</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h4>Feedback for Improvement</h4>
+                  <p>Tell me what you'd like to improve or change in the classifications:</p>
+                  <textarea
+                    className="feedback-textarea"
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                    placeholder="Example: The complaints about room cleanliness should be marked as P1 Critical, not P2. Also, increase urgency scores for service quality issues..."
+                    rows="4"
+                  />
+                  <div className="feedback-actions">
+                    <button
+                      className="regenerate-btn"
+                      onClick={submitFeedback}
+                      disabled={!feedbackInput.trim() || isRegenerating}
+                    >
+                      🔄 Regenerate with Feedback
+                    </button>
+                    <button
+                      className="cancel-btn"
+                      onClick={() => {
+                        setFeedbackMode(false)
+                        setFeedbackInput('')
+                      }}
+                      disabled={isRegenerating}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           
           <div className="results-table-container">
             <table className="results-table">
@@ -426,5 +549,6 @@ function Layer2() {
     </div>
   )
 }
+
 
 export default Layer2
