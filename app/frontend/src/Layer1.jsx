@@ -1,70 +1,117 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { useData } from './DataContext'
+import DatasetTable from './DatasetTable'
 
 const API_BASE = '/api/layer1'
+const STORAGE_KEY = 'sebl_layer1_state'
 
-// DatasetTable component to display CSV data as table
-function DatasetTable({ csvData }) {
-  const lines = csvData.trim().split('\n')
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-  const rows = lines.slice(1).map(line => {
-    // Parse CSV properly handling quoted values
-    const values = []
-    let current = ''
-    let inQuotes = false
-    for (let char of line) {
-      if (char === '"') {
-        inQuotes = !inQuotes
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim().replace(/^"|"$/g, ''))
-        current = ''
-      } else {
-        current += char
+// Load state from localStorage
+const loadLayer1State = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        messages: parsed.messages || [],
+        sessionId: parsed.sessionId || null,
+        checklist: parsed.checklist || {},
+        isReadyToGenerate: parsed.isReadyToGenerate || false,
+        datasetAvailable: parsed.datasetAvailable || false,
+        currentDataset: parsed.currentDataset || null,
+        feedbackMode: parsed.feedbackMode || false,
+        iterationCount: parsed.iterationCount || 0
       }
     }
-    values.push(current.trim().replace(/^"|"$/g, ''))
-    return values
-  })
+  } catch (error) {
+    console.error('Error loading Layer1 state:', error)
+  }
+  return {
+    messages: [],
+    sessionId: null,
+    checklist: {},
+    isReadyToGenerate: false,
+    datasetAvailable: false,
+    currentDataset: null,
+    feedbackMode: false,
+    iterationCount: 0
+  }
+}
 
-  return (
-    <div className="dataset-table-wrapper">
-      <table className="dataset-table">
-        <thead>
-          <tr>
-            {headers.map((header, i) => (
-              <th key={i}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              {row.map((cell, j) => (
-                <td key={j}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
+// Save state to localStorage
+const saveLayer1State = (state) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch (error) {
+    console.error('Error saving Layer1 state:', error)
+  }
 }
 
 function Layer1() {
-  const [messages, setMessages] = useState([])
+  const { updateLayer1Data, extractDomain, layer1Data } = useData()
+  const loadedState = loadLayer1State()
+  
+  // Load messages from context if available, otherwise from localStorage
+  const initialMessages = layer1Data.messages?.length > 0 ? layer1Data.messages : loadedState.messages
+  const initialChecklist = layer1Data.checklist || loadedState.checklist
+  const initialDataset = layer1Data.dataset || loadedState.currentDataset
+  
+  const [messages, setMessages] = useState(initialMessages)
   const [inputValue, setInputValue] = useState('')
-  const [sessionId, setSessionId] = useState(null)
-  const [checklist, setChecklist] = useState({})
-  const [isReadyToGenerate, setIsReadyToGenerate] = useState(false)
-  const [datasetAvailable, setDatasetAvailable] = useState(false)
+  const [sessionId, setSessionId] = useState(loadedState.sessionId)
+  const [checklist, setChecklist] = useState(initialChecklist)
+  const [isReadyToGenerate, setIsReadyToGenerate] = useState(loadedState.isReadyToGenerate)
+  const [datasetAvailable, setDatasetAvailable] = useState(loadedState.datasetAvailable || initialDataset !== null)
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [currentDataset, setCurrentDataset] = useState(null)
-  const [feedbackMode, setFeedbackMode] = useState(false)
+  const [currentDataset, setCurrentDataset] = useState(initialDataset)
+  const [feedbackMode, setFeedbackMode] = useState(loadedState.feedbackMode)
   const [feedbackInput, setFeedbackInput] = useState('')
   const [isRegenerating, setIsRegenerating] = useState(false)
-  const [iterationCount, setIterationCount] = useState(0)
+  const [iterationCount, setIterationCount] = useState(loadedState.iterationCount)
   const messagesEndRef = useRef(null)
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveLayer1State({
+      messages,
+      sessionId,
+      checklist,
+      isReadyToGenerate,
+      datasetAvailable,
+      currentDataset,
+      feedbackMode,
+      iterationCount
+    })
+  }, [messages, sessionId, checklist, isReadyToGenerate, datasetAvailable, currentDataset, feedbackMode, iterationCount])
+
+  // Update context when messages or checklist change
+  useEffect(() => {
+    updateLayer1Data({ messages, checklist, dataset: currentDataset })
+    // Extract and update domain from messages or checklist
+    const domain = extractDomain(messages, checklist)
+    if (domain) {
+      updateLayer1Data({ domain })
+    }
+  }, [messages, checklist, currentDataset, extractDomain, updateLayer1Data])
+  
+  // Load data from context on mount if available (only once)
+  useEffect(() => {
+    if (layer1Data.messages?.length > 0 && messages.length <= 1) {
+      // Only load if we only have welcome message
+      const hasOnlyWelcome = messages.length === 1 && messages[0]?.type === 'bot' && messages[0]?.content?.includes('Welcome')
+      if (hasOnlyWelcome) {
+        setMessages(layer1Data.messages)
+      }
+    }
+    if (layer1Data.checklist && Object.keys(layer1Data.checklist).length > 0 && Object.keys(checklist).length === 0) {
+      setChecklist(layer1Data.checklist)
+    }
+    if (layer1Data.dataset && !currentDataset) {
+      setCurrentDataset(layer1Data.dataset)
+      setDatasetAvailable(true)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -74,11 +121,12 @@ function Layer1() {
     scrollToBottom()
   }, [messages])
 
-  // Add welcome message on first load
+  // Add welcome message on first load only if no messages exist
   useEffect(() => {
-    setMessages([{
-      type: 'bot',
-      content: `👋 Welcome to the **Risk Classification Dataset Generator**!
+    if (messages.length === 0) {
+      setMessages([{
+        type: 'bot',
+        content: `👋 Welcome to the **Risk Classification Dataset Generator**!
 
 I'm here to help you create a customized risk classification dataset for your business. This dataset will help identify and categorize potential risks specific to your industry.
 
@@ -89,7 +137,8 @@ I'm here to help you create a customized risk classification dataset for your bu
 4. Download the final dataset as a CSV file
 
 Let's get started! **What industry or domain does your business operate in?** (e.g., Finance, E-commerce, Healthcare, Restaurant, etc.)`
-    }])
+      }])
+    }
   }, [])
 
   const sendMessage = async () => {
@@ -159,6 +208,9 @@ Let's get started! **What industry or domain does your business operate in?** (e
       setDatasetAvailable(true)
       setFeedbackMode(true)
       
+      // Update context with dataset
+      updateLayer1Data({ dataset: data.dataset })
+      
       // Add message with dataset table
       setMessages(prev => [...prev, { 
         type: 'dataset',
@@ -224,6 +276,9 @@ What would you like to do?`
       const data = await response.json()
       setCurrentDataset(data.dataset)
       setIterationCount(data.iteration)
+
+      // Update context with new dataset
+      updateLayer1Data({ dataset: data.dataset })
 
       // Add new dataset table
       setMessages(prev => [...prev, { 
@@ -345,7 +400,7 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
       {/* Main chat area */}
       <main className="chat-container">
         <header className="chat-header">
-          <h1>🤖 Risk Classification Generator</h1>
+          <h1><span className="header-icon">🤖</span> Risk Classification Generator</h1>
           <p>AI-powered tool for creating domain-specific risk classification datasets</p>
         </header>
 

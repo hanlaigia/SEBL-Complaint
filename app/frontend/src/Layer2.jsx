@@ -1,29 +1,96 @@
 import { useState, useRef, useEffect } from 'react'
+import { useData } from './DataContext'
 import './App.css'
 
+const STORAGE_KEY = 'sebl_layer2_state'
+
+// Load state from localStorage
+const loadLayer2State = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        sessionId: parsed.sessionId || null,
+        results: parsed.results || [],
+        progress: parsed.progress || {
+          status: 'pending',
+          total_rows: 0,
+          processed_rows: 0,
+          elapsed_seconds: 0
+        },
+        regenerationCount: parsed.regenerationCount || 0
+      }
+    }
+  } catch (error) {
+    console.error('Error loading Layer2 state:', error)
+  }
+  return {
+    sessionId: null,
+    results: [],
+    progress: {
+      status: 'pending',
+      total_rows: 0,
+      processed_rows: 0,
+      elapsed_seconds: 0
+    },
+    regenerationCount: 0
+  }
+}
+
+// Save state to localStorage
+const saveLayer2State = (state) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch (error) {
+    console.error('Error saving Layer2 state:', error)
+  }
+}
+
 function Layer2() {
+  const { updateLayer2Data, layer2Data } = useData()
+  const loadedState = loadLayer2State()
+  
+  // Load results from context if available, otherwise from localStorage
+  const initialResults = layer2Data.results?.length > 0 ? layer2Data.results : loadedState.results
+  
   // File upload state
   const [complaintsFile, setComplaintsFile] = useState(null)
   const [riskTableFile, setRiskTableFile] = useState(null)
-  const [sessionId, setSessionId] = useState(null)
+  const [sessionId, setSessionId] = useState(loadedState.sessionId)
   
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState({
-    status: 'pending',
-    total_rows: 0,
-    processed_rows: 0,
-    elapsed_seconds: 0
-  })
+  const [progress, setProgress] = useState(loadedState.progress)
   const [localElapsed, setLocalElapsed] = useState(0)
   
   // Results state
-  const [results, setResults] = useState([])
+  const [results, setResults] = useState(initialResults)
   const [error, setError] = useState(null)
   const [feedbackMode, setFeedbackMode] = useState(false)
   const [feedbackInput, setFeedbackInput] = useState('')
   const [isRegenerating, setIsRegenerating] = useState(false)
-  const [regenerationCount, setRegenerationCount] = useState(0)
+  const [regenerationCount, setRegenerationCount] = useState(loadedState.regenerationCount)
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveLayer2State({
+      sessionId,
+      results,
+      progress,
+      regenerationCount
+    })
+  }, [sessionId, results, progress, regenerationCount])
+  
+  // Load data from context on mount if available (only once)
+  useEffect(() => {
+    if (layer2Data.results?.length > 0 && results.length === 0) {
+      setResults(layer2Data.results)
+    }
+    if (layer2Data.totalComplaints > 0 && progress.total_rows === 0) {
+      setProgress(prev => ({ ...prev, total_rows: layer2Data.totalComplaints }))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
   // Refs for file inputs
   const complaintsInputRef = useRef(null)
@@ -104,6 +171,12 @@ function Layer2() {
         elapsed_seconds: 0
       })
       
+      // Update context with total complaints and date created
+      updateLayer2Data({
+        totalComplaints: data.complaints_count,
+        dateCreated: new Date().toISOString()
+      })
+      
     } catch (err) {
       setError(err.message)
     }
@@ -181,6 +254,9 @@ function Layer2() {
       
       const data = await response.json()
       setResults(data.results)
+      
+      // Update context with new results after regeneration
+      updateLayer2Data({ results: data.results })
       
     } catch (err) {
       setError(err.message)
@@ -271,6 +347,13 @@ function Layer2() {
     setFeedbackInput('')
     setIsRegenerating(false)
     setRegenerationCount(0)
+    
+    // Clear context data
+    updateLayer2Data({
+      totalComplaints: 0,
+      results: [],
+      dateCreated: null
+    })
     
     if (progressInterval.current) {
       clearInterval(progressInterval.current)

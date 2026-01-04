@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Layer1 from './Layer1'
 import Layer2 from './Layer2'
+import Dashboard from './Dashboard'
 import './App.css'
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
             onClick={() => setActiveTab('layer1')}
           >
             <span className="tab-icon">📊</span>
-            <span className="tab-label">Layer 1</span>
+            <span className="tab-label">Chatbot</span>
             <span className="tab-subtitle">Risk Classification</span>
           </button>
           <button 
@@ -24,8 +25,16 @@ function App() {
             onClick={() => setActiveTab('layer2')}
           >
             <span className="tab-icon">🎯</span>
-            <span className="tab-label">Layer 2</span>
+            <span className="tab-label">Database</span>
             <span className="tab-subtitle">Priority Classification</span>
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <span className="tab-icon">📈</span>
+            <span className="tab-label">Dashboard</span>
+            <span className="tab-subtitle">Overview & Summary</span>
           </button>
         </div>
       </nav>
@@ -34,6 +43,7 @@ function App() {
       <div className="tab-content">
         {activeTab === 'layer1' && <Layer1 />}
         {activeTab === 'layer2' && <Layer2 />}
+        {activeTab === 'dashboard' && <Dashboard />}
       </div>
     </div>
   )
