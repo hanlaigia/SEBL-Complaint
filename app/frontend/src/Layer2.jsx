@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { FcHighPriority, FcDocument, FcBarChart } from 'react-icons/fc'
 import { useData } from './DataContext'
 import './App.css'
 
@@ -387,7 +388,7 @@ function Layer2() {
       
       {error && (
         <div className="layer2-error">
-          <span>⚠️</span> {error}
+          <span><FcHighPriority /></span> {error}
         </div>
       )}
       
@@ -408,7 +409,7 @@ function Layer2() {
                 accept=".csv"
                 hidden
               />
-              <div className="upload-icon">📋</div>
+              <div className="upload-icon"><FcDocument /></div>
               <h3>Complaints CSV</h3>
               {complaintsFile ? (
                 <p className="file-name">{complaintsFile.name}</p>
@@ -430,7 +431,7 @@ function Layer2() {
                 accept=".csv"
                 hidden
               />
-              <div className="upload-icon">📊</div>
+              <div className="upload-icon"><FcBarChart /></div>
               <h3>Risk Table CSV</h3>
               {riskTableFile ? (
                 <p className="file-name">{riskTableFile.name}</p>

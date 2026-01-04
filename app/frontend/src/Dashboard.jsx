@@ -1,3 +1,4 @@
+import { FcBarChart, FcDocument, FcHighPriority, FcCalendar, FcBusiness } from 'react-icons/fc'
 import { useData } from './DataContext'
 import DatasetTable from './DatasetTable'
 
@@ -19,13 +20,13 @@ function Dashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1><span className="header-icon">📊</span> Dashboard</h1>
+        <h1><span className="header-icon"><FcBarChart /></span> Dashboard</h1>
         <p>Overview of your risk classification and complaint analysis</p>
       </div>
 
       {!hasData ? (
         <div className="dashboard-empty">
-          <div className="empty-icon">📋</div>
+          <div className="empty-icon"><FcDocument /></div>
           <h2>No Data Available</h2>
           <p>Please complete Layer 1 and Layer 2 first to view the dashboard.</p>
           <div className="empty-steps">
@@ -48,7 +49,7 @@ function Dashboard() {
           {/* Cards Section */}
           <div className="dashboard-cards">
             <div className="dashboard-card">
-              <div className="card-icon">🏢</div>
+              <div className="card-icon"><FcBusiness /></div>
               <div className="card-content">
                 <h3>Domain</h3>
                 <p className="card-value">{domain}</p>
@@ -56,7 +57,7 @@ function Dashboard() {
             </div>
 
             <div className="dashboard-card">
-              <div className="card-icon">📋</div>
+              <div className="card-icon"><FcDocument /></div>
               <div className="card-content">
                 <h3>Total Complaints</h3>
                 <p className="card-value">{totalComplaints}</p>
@@ -64,7 +65,7 @@ function Dashboard() {
             </div>
 
             <div className="dashboard-card">
-              <div className="card-icon">⚠️</div>
+              <div className="card-icon"><FcHighPriority /></div>
               <div className="card-content">
                 <h3>Critical Complaints</h3>
                 <p className="card-value">{criticalComplaints}</p>
@@ -72,7 +73,7 @@ function Dashboard() {
             </div>
 
             <div className="dashboard-card">
-              <div className="card-icon">📅</div>
+              <div className="card-icon"><FcCalendar /></div>
               <div className="card-content">
                 <h3>Date Created</h3>
                 <p className="card-value">{dateCreated}</p>
