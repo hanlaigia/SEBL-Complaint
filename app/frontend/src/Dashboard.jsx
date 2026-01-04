@@ -1,4 +1,4 @@
-import { FcBarChart, FcDocument, FcHighPriority, FcCalendar, FcBusiness } from 'react-icons/fc'
+import { FcDocument, FcHighPriority, FcCalendar, FcBusiness } from 'react-icons/fc'
 import { useData } from './DataContext'
 import DatasetTable from './DatasetTable'
 
@@ -20,7 +20,7 @@ function Dashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1><span className="header-icon"><FcBarChart /></span> Dashboard</h1>
+        <h1>Dashboard</h1>
         <p>Overview of your risk classification and complaint analysis</p>
       </div>
 
@@ -28,15 +28,15 @@ function Dashboard() {
         <div className="dashboard-empty">
           <div className="empty-icon"><FcDocument /></div>
           <h2>No Data Available</h2>
-          <p>Please complete Layer 1 and Layer 2 first to view the dashboard.</p>
+          <p>Please complete the Chatbot and Database tabs first to view the dashboard.</p>
           <div className="empty-steps">
             <div className="empty-step">
               <span className="step-number">1</span>
-              <span>Go to <strong>Layer 1</strong> tab and generate a risk classification dataset</span>
+              <span>Go to <strong>Chatbot</strong> tab and generate a risk classification dataset</span>
             </div>
             <div className="empty-step">
               <span className="step-number">2</span>
-              <span>Go to <strong>Layer 2</strong> tab and classify your complaints</span>
+              <span>Go to <strong>Database</strong> tab and classify your complaints</span>
             </div>
             <div className="empty-step">
               <span className="step-number">3</span>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FcComments, FcDatabase, FcStatistics } from 'react-icons/fc'
 import Layer1 from './Layer1'
 import Layer2 from './Layer2'
 import Dashboard from './Dashboard'
@@ -16,7 +17,7 @@ function App() {
             className={`tab-button ${activeTab === 'layer1' ? 'active' : ''}`}
             onClick={() => setActiveTab('layer1')}
           >
-            <span className="tab-icon">📊</span>
+            <span className="tab-icon"><FcComments /></span>
             <span className="tab-label">Chatbot</span>
             <span className="tab-subtitle">Risk Classification</span>
           </button>
@@ -24,7 +25,7 @@ function App() {
             className={`tab-button ${activeTab === 'layer2' ? 'active' : ''}`}
             onClick={() => setActiveTab('layer2')}
           >
-            <span className="tab-icon">🎯</span>
+            <span className="tab-icon"><FcDatabase /></span>
             <span className="tab-label">Database</span>
             <span className="tab-subtitle">Priority Classification</span>
           </button>
@@ -32,7 +33,7 @@ function App() {
             className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
-            <span className="tab-icon">📈</span>
+            <span className="tab-icon"><FcStatistics /></span>
             <span className="tab-label">Dashboard</span>
             <span className="tab-subtitle">Overview & Summary</span>
           </button>

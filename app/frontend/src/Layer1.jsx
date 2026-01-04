@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { FcDocument } from 'react-icons/fc'
 import { useData } from './DataContext'
 import DatasetTable from './DatasetTable'
 
@@ -351,7 +352,7 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
       {/* Sidebar with checklist */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>📋 Data Checklist</h2>
+          <h2><FcDocument /> Data Checklist</h2>
           <div className="progress-bar">
             <div 
               className="progress-fill" 
@@ -400,7 +401,7 @@ Click the **Download Dataset** button to save your dataset as a CSV file. You ca
       {/* Main chat area */}
       <main className="chat-container">
         <header className="chat-header">
-          <h1><span className="header-icon">🤖</span> Risk Classification Generator</h1>
+          <h1>Risk Classification Generator</h1>
           <p>AI-powered tool for creating domain-specific risk classification datasets</p>
         </header>
 
