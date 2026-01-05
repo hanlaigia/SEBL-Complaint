@@ -19,7 +19,6 @@ function App() {
           >
             <span className="tab-icon"><FcComments /></span>
             <span className="tab-label">Chatbot</span>
-            <span className="tab-subtitle">Risk Classification</span>
           </button>
           <button 
             className={`tab-button ${activeTab === 'layer2' ? 'active' : ''}`}
@@ -27,7 +26,6 @@ function App() {
           >
             <span className="tab-icon"><FcDatabase /></span>
             <span className="tab-label">Database</span>
-            <span className="tab-subtitle">Priority Classification</span>
           </button>
           <button 
             className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -35,7 +33,6 @@ function App() {
           >
             <span className="tab-icon"><FcStatistics /></span>
             <span className="tab-label">Dashboard</span>
-            <span className="tab-subtitle">Overview & Summary</span>
           </button>
         </div>
       </nav>
